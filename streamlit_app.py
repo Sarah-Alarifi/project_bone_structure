@@ -3,9 +3,7 @@ import pandas as pd
 from PIL import Image
 import streamlit as st
 import numpy as np
-import cv2 
-from scipy.special import softmax
-from scipy.special import expit 
+import cv2  # For SIFT feature extraction
 
 # Function to load a model
 def load_model(model_name: str):
@@ -40,37 +38,39 @@ def extract_features(img) -> np.ndarray:
     if descriptors is not None:
         return descriptors.flatten()[:128]  # Truncate/pad to fixed size
     else:
-        return np.zeros(128)  # Zero vector if no features are found 
+        return np.zeros(128)  # Zero vector if no features are found
 
+# Function to preprocess and classify an image
 def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
+    """
+    Classify the given image using the selected model and return predictions.
 
+    Args:
+        img (bytes): The image file to classify.
+        model: The pre-trained model.
+        model_type (str): The type of model (KNN, ANN, or SVM).
+
+    Returns:
+        pd.DataFrame: A DataFrame containing predictions and their probabilities.
+    """
     try:
         image = Image.open(img).convert("RGB")
         features = extract_features(image)
 
-        if model_type == "SVM":
-            scores = model.decision_function([features])  # Confidence scores
-
-            if scores.ndim == 1:  # Binary classification
-                probabilities = expit(scores)  # Apply sigmoid for binary probability
-                probabilities = np.array([1 - probabilities, probabilities]).T[0]
-                prediction = [1 if probabilities[1] > 0.5 else 0]
-            else:  # Multi-class classification
-                probabilities = softmax(scores, axis=1)[0]  # Convert to probabilities
-                prediction = [np.argmax(scores)]
-
-        elif model_type == "KNN" or model_type == "ANN":
-            probabilities = model.predict_proba([features])[0]
-            prediction = [np.argmax(probabilities)]
+        # Predict based on the model type
+        if model_type == "KNN" or model_type == "SVM":
+            prediction = model.predict([features])
+            probabilities = model.predict_proba([features])[0]  # Class probabilities
+        elif model_type == "ANN":
+            probabilities = model.predict_proba([features])[0]  # For ANN
+            prediction = [np.argmax(probabilities)]  # Get class with highest probability
 
         # Map numeric predictions to descriptive labels
         LABEL_MAPPING = {
             0: "Not Fractured",
             1: "Fractured"
         }
-        class_labels = [LABEL_MAPPING[cls] for cls in model.classes_] if model_type != "SVM" else [
-            LABEL_MAPPING[0], LABEL_MAPPING[1]
-        ]
+        class_labels = [LABEL_MAPPING[cls] for cls in model.classes_]
 
         # Create a DataFrame to store predictions and probabilities
         prediction_df = pd.DataFrame({
@@ -82,8 +82,6 @@ def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
     except Exception as e:
         st.error(f"An error occurred during classification: {e}")
         return pd.DataFrame(), None
-
-
 
 # Streamlit app
 st.title("Bone Structure Analysis")
@@ -98,9 +96,9 @@ model_type = st.selectbox("Choose a model:", ["KNN", "ANN", "SVM"])
 # Load the selected model
 try:
     model_files = {
-        "KNN": "knn_classifier.pkl",
-        "ANN": "ann_classifier.pkl",
-        "SVM": "svm_classifier.pkl"
+        "KNN": "knn_classifier-2.pkl",
+        "ANN": "ann_classifier-2.pkl",
+        "SVM": "svm_classifier-2.pkl"
     }
     selected_model_file = model_files[model_type]
     model = load_model(selected_model_file)
