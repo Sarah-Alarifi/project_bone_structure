@@ -41,6 +41,8 @@ def extract_features(img) -> np.ndarray:
         return np.zeros(128)  # Zero vector if no features are found
 
 # Function to preprocess and classify an image
+from scipy.special import softmax
+
 def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
     """
     Classify the given image using the selected model and return predictions.
@@ -57,10 +59,16 @@ def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
         image = Image.open(img).convert("RGB")
         features = extract_features(image)
 
-        # Predict based on the model type
         if model_type == "KNN" or model_type == "SVM":
-            prediction = model.predict([features])
-            probabilities = model.predict_proba([features])[0]  # Class probabilities
+            if model_type == "SVM":
+                # Use decision_function for SVM
+                scores = model.decision_function([features])  # Confidence scores
+                probabilities = softmax(scores, axis=1)[0]  # Convert to probabilities
+                prediction = [np.argmax(scores)]
+            else:
+                prediction = model.predict([features])
+                probabilities = model.predict_proba([features])[0]  # Class probabilities
+
         elif model_type == "ANN":
             probabilities = model.predict_proba([features])[0]  # For ANN
             prediction = [np.argmax(probabilities)]  # Get class with highest probability
@@ -82,6 +90,7 @@ def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
     except Exception as e:
         st.error(f"An error occurred during classification: {e}")
         return pd.DataFrame(), None
+
 
 # Streamlit app
 st.title("Bone Structure Analysis")
