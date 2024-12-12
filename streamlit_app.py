@@ -14,7 +14,7 @@ def load_model_file(model_name: str):
         return load_model(model_name) 
     else:
         raise ValueError("Unsupported model file format")
-'''
+
 def extract_features(img) -> np.ndarray:
     image_cv = np.array(img)
     image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2GRAY) 
@@ -26,13 +26,13 @@ def extract_features(img) -> np.ndarray:
         return descriptors.flatten()[:128]  
     else:
         return np.zeros(128)  # Zero vector if no features are found
-'''
+
 def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
     try:
         image = Image.open(img).convert("RGB")
 
         if model_type in ["KNN", "ANN", "SVM"]:
-          #  features = extract_features(image)
+            features = extract_features(image)
             probabilities = model.predict_proba([features])[0]  
             
             probabilities = [round(prob * 100, 2) for prob in probabilities]
