@@ -8,6 +8,9 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 from sklearn.preprocessing import StandardScaler
 
+# Load the scaler used during training
+scaler = joblib.load("scaler.pkl")  # Ensure you save and provide this file from training
+
 def load_model_file(model_name: str):
     if model_name.endswith(".pkl"):
         return joblib.load(model_name)
@@ -24,28 +27,27 @@ def extract_features(img) -> np.ndarray:
     keypoints, descriptors = sift.detectAndCompute(image_cv, None)
 
     if descriptors is not None:
-        # Use a fixed-size feature vector
         descriptors = descriptors.flatten()
-        return descriptors[:128] if len(descriptors) >= 128 else np.pad(descriptors, (0, 128 - len(descriptors)), mode='constant')
+        features = descriptors[:128] if len(descriptors) >= 128 else np.pad(descriptors, (0, 128 - len(descriptors)), mode='constant')
     else:
-        return np.zeros(128)  # Zero vector if no features are found
+        features = np.zeros(128)
+    st.write(f"Extracted Features: {features}")  # Debug log for extracted features
+    return features
 
 def normalize_features(features: np.ndarray) -> np.ndarray:
-    scaler = StandardScaler()
-    return scaler.fit_transform(features.reshape(1, -1))[0]
+    return scaler.transform(features.reshape(1, -1))[0]
 
 def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
     try:
         image = Image.open(img).convert("RGB")
 
         if model_type in ["KNN", "ANN"]:
-            # Extract and normalize features
             features = extract_features(image)
             features = normalize_features(features)
             probabilities = model.predict_proba([features])[0]
-
             probabilities = [round(prob * 100, 2) for prob in probabilities]
             prediction = [np.argmax(probabilities)]
+
         elif model_type == "SVM":
             features = extract_features(image)
             features = normalize_features(features)
@@ -62,6 +64,7 @@ def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
                     round(probability_not_fractured * 100, 2),
                     round(probability_fractured * 100, 2)
                 ]
+
         elif model_type in ["CNN with Dropout", "CNN without Dropout"]:
             image = image.resize((128, 128))
             image_array = img_to_array(image) / 255.0
