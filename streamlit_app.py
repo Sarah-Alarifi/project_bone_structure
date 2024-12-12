@@ -3,97 +3,79 @@ import pandas as pd
 from PIL import Image
 import streamlit as st
 import numpy as np
-import cv2  # For SIFT feature extraction
+import cv2
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
+from sklearn.preprocessing import StandardScaler
 
 def load_model_file(model_name: str):
     if model_name.endswith(".pkl"):
         return joblib.load(model_name)
     elif model_name.endswith(".h5"):
-        return load_model(model_name) 
+        return load_model(model_name)
     else:
         raise ValueError("Unsupported model file format")
 
 def extract_features(img) -> np.ndarray:
     image_cv = np.array(img)
-    image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2GRAY) 
+    image_cv = cv2.cvtColor(image_cv, cv2.COLOR_RGB2GRAY)
 
     sift = cv2.SIFT_create()
     keypoints, descriptors = sift.detectAndCompute(image_cv, None)
 
     if descriptors is not None:
-        return descriptors.flatten()[:128]  
+        # Use a fixed-size feature vector
+        descriptors = descriptors.flatten()
+        return descriptors[:128] if len(descriptors) >= 128 else np.pad(descriptors, (0, 128 - len(descriptors)), mode='constant')
     else:
         return np.zeros(128)  # Zero vector if no features are found
 
+def normalize_features(features: np.ndarray) -> np.ndarray:
+    scaler = StandardScaler()
+    return scaler.fit_transform(features.reshape(1, -1))[0]
+
 def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
-    """
-    Classify the given image using the selected model and return predictions.
-
-    Args:
-        img (bytes): The image file to classify.
-        model: The pre-trained model.
-        model_type (str): The type of model (KNN, ANN, SVM, or CNN).
-
-    Returns:
-        pd.DataFrame: A DataFrame containing predictions and their probabilities.
-    """
     try:
         image = Image.open(img).convert("RGB")
 
         if model_type in ["KNN", "ANN"]:
-            # Extract features for non-CNN models
+            # Extract and normalize features
             features = extract_features(image)
-            probabilities = model.predict_proba([features])[0]  # Get probabilities
-            
-            # Convert probabilities to percentages
+            features = normalize_features(features)
+            probabilities = model.predict_proba([features])[0]
+
             probabilities = [round(prob * 100, 2) for prob in probabilities]
-            prediction = [np.argmax(probabilities)]  # Get the predicted class
+            prediction = [np.argmax(probabilities)]
         elif model_type == "SVM":
-            # Extract features for SVM
             features = extract_features(image)
-            prediction = model.predict([features])  # Get the predicted class
-            
+            features = normalize_features(features)
+            prediction = model.predict([features])
+
             if hasattr(model, "predict_proba"):
-                # If SVM was trained with probability=True
                 probabilities = model.predict_proba([features])[0]
                 probabilities = [round(prob * 100, 2) for prob in probabilities]
             else:
-                # Use decision_function for confidence scores
-                decision_score = model.decision_function([features])[0]  # Get single score
-                probability_fractured = 1 / (1 + np.exp(-decision_score))  # Sigmoid function
-                probability_not_fractured = 1 - probability_fractured  # Complementary probability
+                decision_score = model.decision_function([features])[0]
+                probability_fractured = 1 / (1 + np.exp(-decision_score))
+                probability_not_fractured = 1 - probability_fractured
                 probabilities = [
                     round(probability_not_fractured * 100, 2),
                     round(probability_fractured * 100, 2)
                 ]
-            
         elif model_type in ["CNN with Dropout", "CNN without Dropout"]:
-            # Preprocess image for CNN
-            image = image.resize((128, 128))  # Resize to match CNN input size
-            image_array = img_to_array(image) / 255.0  # Normalize to [0, 1]
-            image_array = np.expand_dims(image_array, axis=0)  # Add batch dimension
-            
-            # Get the probability of "Not Fractured"
-            not_fractured_prob = model.predict(image_array)[0][0]  # Scalar probability
-            fractured_prob = 1 - not_fractured_prob  # Complementary probability
-            
-            # Convert to percentages
-            not_fractured_prob = round(not_fractured_prob * 100, 2)
-            fractured_prob = round(fractured_prob * 100, 2)
-            
-            probabilities = [not_fractured_prob, fractured_prob]
+            image = image.resize((128, 128))
+            image_array = img_to_array(image) / 255.0
+            image_array = np.expand_dims(image_array, axis=0)
+
+            not_fractured_prob = model.predict(image_array)[0][0]
+            fractured_prob = 1 - not_fractured_prob
+
+            probabilities = [round(not_fractured_prob * 100, 2), round(fractured_prob * 100, 2)]
             prediction = [0 if not_fractured_prob >= fractured_prob else 1]
-        
-        # Map numeric predictions to descriptive labels
-        LABEL_MAPPING = {
-            0: "Not Fractured",
-            1: "Fractured"
-        }
+
+        LABEL_MAPPING = {0: "Not Fractured", 1: "Fractured"}
         class_labels = ["Not Fractured", "Fractured"]
 
-        # Create a DataFrame to store predictions and probabilities
         prediction_df = pd.DataFrame({
             "Class": class_labels,
             "Probability (%)": probabilities
@@ -103,8 +85,6 @@ def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
     except Exception as e:
         st.error(f"An error occurred during classification: {e}")
         return pd.DataFrame(), None
-
-
 
 st.title("Bone Structure Analysis")
 st.write("Upload an X-ray or bone scan image to analyze the structure.")
@@ -118,8 +98,8 @@ try:
         "KNN": "knn_classifier.pkl",
         "ANN": "ann_classifier.pkl",
         "SVM": "svm_classifier.pkl",
-        "CNN with Dropout": "cnn_with_dropoutt.h5", 
-        "CNN without Dropout": "cnn_without_dropoutt.h5" 
+        "CNN with Dropout": "cnn_with_dropoutt.h5",
+        "CNN without Dropout": "cnn_without_dropoutt.h5"
     }
     selected_model_file = model_files[model_type]
     model = load_model_file(selected_model_file)
@@ -130,17 +110,13 @@ except FileNotFoundError as e:
 if image_file:
     st.image(image_file, caption="Uploaded Image", use_column_width=True)
     pred_button = st.button("Analyze Bone Structure")
-    
+
     if pred_button:
-        # Perform image classification
         predictions_df, top_prediction = classify_image(image_file, model, model_type)
 
         if not predictions_df.empty:
-            # Display top prediction
             st.success(f'Predicted Structure: **{top_prediction}** '
                        f'Confidence: {predictions_df.iloc[0]["Probability (%)"]:.2f}%')
-
-            # Display all predictions
             st.write("Detailed Predictions:")
             st.table(predictions_df)
         else:
