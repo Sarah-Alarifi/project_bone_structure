@@ -78,7 +78,7 @@ try:
     model_files = {
         "KNN": "knn_classifier.pkl",
         "ANN": "ann_classifier.pkl",
-        "SVM": "svm_classifier-2.pkl",
+        "SVM": "SVM_model-2.pkl",
         "CNN with Dropout": "cnn_with_dropoutt.h5", 
         "CNN without Dropout": "cnn_without_dropoutt.h5" 
     }
