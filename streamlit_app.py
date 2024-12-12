@@ -61,8 +61,13 @@ def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
                 probabilities = [round(prob * 100, 2) for prob in probabilities]
             else:
                 # Use decision_function for confidence scores
-                decision_scores = model.decision_function([features])
-                probabilities = [round((score / max(abs(decision_scores))) * 100, 2) for score in decision_scores]
+                decision_score = model.decision_function([features])[0]  # Get single score
+                probability_fractured = 1 / (1 + np.exp(-decision_score))  # Sigmoid function
+                probability_not_fractured = 1 - probability_fractured  # Complementary probability
+                probabilities = [
+                    round(probability_not_fractured * 100, 2),
+                    round(probability_fractured * 100, 2)
+                ]
             
         elif model_type in ["CNN with Dropout", "CNN without Dropout"]:
             # Preprocess image for CNN
@@ -98,6 +103,7 @@ def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
     except Exception as e:
         st.error(f"An error occurred during classification: {e}")
         return pd.DataFrame(), None
+
 
 
 st.title("Bone Structure Analysis")
