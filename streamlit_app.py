@@ -32,7 +32,7 @@ def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
         image = Image.open(img).convert("RGB")
 
         if model_type in ["KNN", "ANN", "SVM"]:
-            features = extract_features(image)
+          #  features = extract_features(image)
             probabilities = model.predict_proba([features])[0]  
             
             probabilities = [round(prob * 100, 2) for prob in probabilities]
