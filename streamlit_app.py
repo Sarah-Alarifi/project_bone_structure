@@ -67,7 +67,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Functions for model loading and image classification
 def load_model_file(model_name: str):
     if model_name.endswith(".pkl"):
         return joblib.load(model_name)
@@ -128,7 +127,6 @@ def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
         st.error(f"An error occurred during classification: {e}")
         return pd.DataFrame(), None
 
-# App UI
 st.markdown("<div class='main-title'>Bone Structure Analysis</div>", unsafe_allow_html=True)
 st.markdown("<div class='sub-title'>Upload an X-ray or bone scan image to analyze the structure</div>", unsafe_allow_html=True)
 
