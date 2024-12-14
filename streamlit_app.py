@@ -7,6 +7,68 @@ import cv2  # For SIFT feature extraction
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 
+# Apply custom CSS for the light blue theme
+st.markdown(
+    """
+    <style>
+        div[data-testid="stAppViewContainer"] {
+            background-color: #e3f2fd; /* Light Blue Background */
+            padding: 10px;
+        }
+        div[data-testid="stHeader"] {
+            background: none; /* Remove default header background */
+        }
+        .main-title {
+            color: #1565C0; /* Deep Blue */
+            text-align: center;
+            font-size: 42px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .sub-title {
+            color: #1976D2; /* Medium Blue */
+            text-align: center;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+        .uploaded-image {
+            text-align: center;
+            color: #0288D1; /* Cyan Blue */
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .results-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #01579B; /* Dark Blue */
+            margin-top: 20px;
+        }
+        .footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #0288D1; /* Cyan Blue */
+            color: white;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+        .stButton > button {
+            background-color: #64B5F6; /* Light Blue Button */
+            color: white;
+            font-size: 16px;
+            border-radius: 10px;
+            border: none;
+        }
+        .stButton > button:hover {
+            background-color: #42A5F5; /* Slightly Darker Blue */
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Functions for model loading and image classification
 def load_model_file(model_name: str):
     if model_name.endswith(".pkl"):
         return joblib.load(model_name)
@@ -67,8 +129,9 @@ def classify_image(img: bytes, model, model_type: str) -> pd.DataFrame:
         st.error(f"An error occurred during classification: {e}")
         return pd.DataFrame(), None
 
-st.title("Bone Structure Analysis")
-st.write("Upload an X-ray or bone scan image to analyze the structure.")
+# App UI
+st.markdown("<div class='main-title'>Bone Structure Analysis</div>", unsafe_allow_html=True)
+st.markdown("<div class='sub-title'>Upload an X-ray or bone scan image to analyze the structure</div>", unsafe_allow_html=True)
 
 image_file = st.file_uploader("Choose an image file", type=["jpg", "jpeg", "png"])
 
@@ -93,16 +156,16 @@ if image_file:
     pred_button = st.button("Analyze Bone Structure")
     
     if pred_button:
-        # Perform image classification
         predictions_df, top_prediction = classify_image(image_file, model, model_type)
 
         if not predictions_df.empty:
-            # Display top prediction
             st.success(f'Predicted Structure: **{top_prediction}** '
                        f'Confidence: {predictions_df.iloc[0]["Probability (%)"]:.2f}%')
 
-            # Display all predictions
-            st.write("Detailed Predictions:")
+            st.markdown("<div class='results-title'>Detailed Predictions:</div>", unsafe_allow_html=True)
             st.table(predictions_df)
         else:
             st.error("Failed to classify the image.")
+
+# Footer
+st.markdown("<div class='footer'>Built with ❤️ using Streamlit</div>", unsafe_allow_html=True)
