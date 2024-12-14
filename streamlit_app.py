@@ -7,33 +7,32 @@ import cv2  # For SIFT feature extraction
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 
-# Apply custom CSS for the light blue theme
 st.markdown(
     """
     <style>
         div[data-testid="stAppViewContainer"] {
-            background-color: #e3f2fd; /* Light Blue Background */
+            background-color: #e3f2fd; 
             padding: 10px;
         }
         div[data-testid="stHeader"] {
-            background: none; /* Remove default header background */
+            background: none; 
         }
         .main-title {
-            color: #1565C0; /* Deep Blue */
+            color: #000000; 
             text-align: center;
             font-size: 42px;
             font-weight: bold;
             margin-top: 20px;
         }
         .sub-title {
-            color: #1976D2; /* Medium Blue */
+            color: #1976D2; 
             text-align: center;
             font-size: 22px;
             margin-bottom: 20px;
         }
         .uploaded-image {
             text-align: center;
-            color: #0288D1; /* Cyan Blue */
+            color: #0288D1; 
             font-weight: bold;
             margin-top: 20px;
         }
@@ -41,27 +40,27 @@ st.markdown(
             text-align: center;
             font-size: 24px;
             font-weight: bold;
-            color: #01579B; /* Dark Blue */
+            color: #01579B;
             margin-top: 20px;
         }
         .footer {
             text-align: center;
             padding: 10px;
-            background-color: #0288D1; /* Cyan Blue */
+            background-color: #0288D1; 
             color: white;
             position: fixed;
             bottom: 0;
             width: 100%;
         }
         .stButton > button {
-            background-color: #64B5F6; /* Light Blue Button */
+            background-color: #64B5F6; 
             color: white;
             font-size: 16px;
             border-radius: 10px;
             border: none;
         }
         .stButton > button:hover {
-            background-color: #42A5F5; /* Slightly Darker Blue */
+            background-color: #42A5F5; 
         }
     </style>
     """,
@@ -167,5 +166,3 @@ if image_file:
         else:
             st.error("Failed to classify the image.")
 
-# Footer
-st.markdown("<div class='footer'>Built with ❤️ using Streamlit</div>", unsafe_allow_html=True)
